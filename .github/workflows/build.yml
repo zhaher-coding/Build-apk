@@ -90,8 +90,7 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Fast mode - skip lint
-        if: ${{ github.event.inputs.fast_mode == 'true' }}
+      - name: Optimasi Gradle (skip lint, build paralel)
         run: |
           mkdir -p ~/.gradle/init.d
           cat > ~/.gradle/init.d/fast.gradle <<'GINIT'
@@ -103,6 +102,10 @@ jobs:
             }
           }
           GINIT
+          cat >> ~/.gradle/gradle.properties <<'GPROP'
+          org.gradle.parallel=true
+          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseParallelGC
+          GPROP
 
       - name: Analyze Project Code
         if: ${{ github.event.inputs.only_analyze == 'true' }}
@@ -135,7 +138,9 @@ jobs:
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
           if [ -f "pubspec.yaml" ]; then
-            EXTRA=""
+            # Default: arm (32-bit) + arm64 saja, TANPA x86_64 -> compile & ukuran APK ~1/3 lebih kecil
+            # (download/kirim ke Telegram jauh lebih cepat). Mau APK untuk emulator x86? tambah ,android-x64
+            EXTRA="--target-platform android-arm,android-arm64"
             if [ "${{ github.event.inputs.fast_mode }}" = "true" ]; then
               EXTRA="--target-platform android-arm64 --no-pub"
               if [ "${{ github.event.inputs.build_type }}" = "release" ]; then
